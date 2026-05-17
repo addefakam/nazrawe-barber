@@ -141,6 +141,24 @@ export const translations = {
     pdfColStatus: 'Status',
     pdfColCustomer: 'Customer',
     pdfColService: 'Service/Note',
+
+    // Expense Log
+    addExpense: 'Add Expense',
+    recordExpenseTitle: 'Record Expense',
+    recordExpenseDesc: 'Select a category, enter the amount spent, and optionally add a note. Expenses are tracked and shown in your net profit.',
+    expenseCategoryLabel: 'Category',
+    expenseCategoryPlaceholder: 'Or type a custom category...',
+    expenseCategoryError: 'Please select or enter a category.',
+    expenseSavedFor: 'expense saved —',
+    expenseSaveBtn: '💸 Save Expense',
+    expenseNotesLabel: 'Notes (optional)',
+    expenseNotesPlaceholder: 'e.g. Bought new clippers',
+
+    // Dashboard — Net Profit
+    totalExpenses: 'TOTAL EXPENSES',
+    netProfit: 'NET PROFIT',
+    netProfitSubtext: 'Total Sales minus Expenses',
+    expensesSubtext: 'Money spent on operations',
   },
   am: {
     // Navigation & Shell
@@ -284,5 +302,23 @@ export const translations = {
     pdfColStatus: 'ሁኔታ',
     pdfColCustomer: 'ደንበኛ',
     pdfColService: 'አገልግሎት/ማስታወሻ',
+
+    // Expense Log
+    addExpense: 'ወጪ መመዝገቢያ',
+    recordExpenseTitle: 'ወጪ መመዝገቢያ',
+    recordExpenseDesc: 'ምድብ ይምረጡ፣ የወጪ መጠን ያስገቡ፣ ከፈለጉ ማስታወሻ ይጨምሩ። ወጪዎቹ ከሽያጭ ታቅፈው የተጣራ ትርፍ ያሳያሉ።',
+    expenseCategoryLabel: 'ምድብ',
+    expenseCategoryPlaceholder: 'ወይም ሌላ ምድብ ይፃፉ...',
+    expenseCategoryError: 'እባክዎ ምድብ ይምረጡ ወይም ይፃፉ።',
+    expenseSavedFor: 'ወጪ ተመዝግቧል —',
+    expenseSaveBtn: '💸 ወጪ አስቀምጥ',
+    expenseNotesLabel: 'ማስታወሻ (ከፈለጉ)',
+    expenseNotesPlaceholder: 'ምሳሌ፦ አዲስ ቅቤ ተገዛ',
+
+    // Dashboard — Net Profit
+    totalExpenses: 'ጠቅላላ ወጪ',
+    netProfit: 'የተጣራ ትርፍ',
+    netProfitSubtext: 'ጠቅላላ ሽያጭ ከወጪ ተቀንሶ',
+    expensesSubtext: 'ለስራ ምክንያት የወጣ ገንዘብ',
   },
 };

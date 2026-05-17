@@ -16,9 +16,18 @@ export interface Transaction {
   notes?: string;
 }
 
+export interface Expense {
+  id: string;
+  timestamp: number;
+  amount: number; // Stored in cents (integer)
+  category: string;
+  notes?: string;
+}
+
 interface AppContextType {
   employees: Employee[];
   transactions: Transaction[];
+  expenses: Expense[];
   theme: 'light' | 'dark';
   language: 'en' | 'am';
   quickAdds: number[];
@@ -37,6 +46,8 @@ interface AppContextType {
   deleteQuickAdd: (val: number) => void;
   addCustomService: (name: string) => boolean;
   deleteCustomService: (name: string) => void;
+  addExpense: (amount: number, category: string, notes?: string) => void;
+  deleteExpense: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -59,6 +70,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('dailly_transactions');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const saved = localStorage.getItem('dailly_expenses');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -90,6 +106,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('dailly_transactions', JSON.stringify(transactions));
   }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem('dailly_expenses', JSON.stringify(expenses));
+  }, [expenses]);
 
   useEffect(() => {
     localStorage.setItem('dailly_theme', theme);
@@ -142,6 +162,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions((prev) => prev.filter((tx) => tx.id !== id));
   };
 
+  const addExpense = (amount: number, category: string, notes?: string) => {
+    const newExpense: Expense = {
+      id: `exp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      amount,
+      category: category.trim(),
+      notes: notes?.trim() || undefined,
+    };
+    setExpenses((prev) => [newExpense, ...prev]);
+  };
+
+  const deleteExpense = (id: string) => {
+    setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+  };
+
   const addEmployee = (name: string): boolean => {
     const trimmed = name.trim();
     if (!trimmed) return false;
@@ -172,10 +207,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetAllData = () => {
     setEmployees(DEFAULT_EMPLOYEES);
     setTransactions([]);
+    setExpenses([]);
     setQuickAdds(DEFAULT_QUICK_ADDS);
     setCustomServices(DEFAULT_SERVICES);
     localStorage.removeItem('dailly_employees');
     localStorage.removeItem('dailly_transactions');
+    localStorage.removeItem('dailly_expenses');
     localStorage.removeItem('dailly_quick_adds');
     localStorage.removeItem('dailly_custom_services');
   };
@@ -204,10 +241,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const exportData = (): string => {
     const data = {
-      version: '1.1.0',
+      version: '1.2.0',
       exportedAt: Date.now(),
       employees,
       transactions,
+      expenses,
       quickAdds,
       customServices,
     };
@@ -235,6 +273,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setEmployees(parsed.employees);
           setTransactions(parsed.transactions);
           
+          if (Array.isArray(parsed.expenses)) {
+            setExpenses(parsed.expenses);
+          }
           if (Array.isArray(parsed.quickAdds)) {
             setQuickAdds(parsed.quickAdds.sort((a: number, b: number) => a - b));
           }
@@ -256,6 +297,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         employees,
         transactions,
+        expenses,
         theme,
         language,
         quickAdds,
@@ -274,6 +316,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteQuickAdd,
         addCustomService,
         deleteCustomService,
+        addExpense,
+        deleteExpense,
       }}
     >
       {children}

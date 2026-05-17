@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { registerServiceWorker } from './registerServiceWorker';
 import { Dashboard } from './components/Dashboard';
 import { IncomeLog } from './components/IncomeLog';
+import { ExpenseLog } from './components/ExpenseLog';
 import { Ledger } from './components/Ledger';
 import { Settings } from './components/Settings';
 import { translations } from './utils/translations';
@@ -10,9 +11,11 @@ import { translations } from './utils/translations';
 // Initialize PWA Offline Service Worker
 registerServiceWorker();
 
+type Tab = 'dashboard' | 'log' | 'expense' | 'ledger' | 'settings';
+
 const AppContent: React.FC = () => {
   const { theme, toggleTheme, language, toggleLanguage } = useApp();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'log' | 'ledger' | 'settings'>('log');
+  const [activeTab, setActiveTab] = useState<Tab>('log');
 
   const t = translations[language];
 
@@ -103,18 +106,19 @@ const AppContent: React.FC = () => {
       <main className="app-content">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'log'       && <IncomeLog onSuccess={triggerToast} />}
+        {activeTab === 'expense'   && <ExpenseLog onSuccess={triggerToast} />}
         {activeTab === 'ledger'    && <Ledger onSuccess={triggerToast} />}
         {activeTab === 'settings'  && <Settings onSuccess={triggerToast} />}
       </main>
 
-      {/* Bottom Navigation Tabs */}
+      {/* Bottom Navigation Tabs — 5 tabs */}
       <nav className="tab-bar">
         <div
           className={`tab-item ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
         >
           <span className="tab-icon">📊</span>
-          <span style={{ fontSize: '11px', fontWeight: 700 }}>{t.summary}</span>
+          <span style={{ fontSize: '10px', fontWeight: 700 }}>{t.summary}</span>
         </div>
 
         <div
@@ -122,7 +126,16 @@ const AppContent: React.FC = () => {
           onClick={() => setActiveTab('log')}
         >
           <span className="tab-icon">➕</span>
-          <span style={{ fontSize: '11px', fontWeight: 700 }}>{t.addIncome}</span>
+          <span style={{ fontSize: '10px', fontWeight: 700 }}>{t.addIncome}</span>
+        </div>
+
+        <div
+          className={`tab-item ${activeTab === 'expense' ? 'active' : ''}`}
+          onClick={() => setActiveTab('expense')}
+          style={{ color: activeTab === 'expense' ? 'hsl(var(--color-danger))' : undefined }}
+        >
+          <span className="tab-icon">💸</span>
+          <span style={{ fontSize: '10px', fontWeight: 700 }}>{t.addExpense}</span>
         </div>
 
         <div
@@ -130,7 +143,7 @@ const AppContent: React.FC = () => {
           onClick={() => setActiveTab('ledger')}
         >
           <span className="tab-icon">📋</span>
-          <span style={{ fontSize: '11px', fontWeight: 700 }}>{t.records}</span>
+          <span style={{ fontSize: '10px', fontWeight: 700 }}>{t.records}</span>
         </div>
 
         <div
@@ -138,7 +151,7 @@ const AppContent: React.FC = () => {
           onClick={() => setActiveTab('settings')}
         >
           <span className="tab-icon">⚙️</span>
-          <span style={{ fontSize: '11px', fontWeight: 700 }}>{t.settings}</span>
+          <span style={{ fontSize: '10px', fontWeight: 700 }}>{t.settings}</span>
         </div>
       </nav>
     </div>

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { formatBirr, filterTransactionsByDate } from '../utils/helpers';
 import { translations } from '../utils/translations';
 import type { DateFilterType } from '../utils/helpers';
+import type { Expense } from '../context/AppContext';
 
 interface Tx { amount: number; status: string; employeeId: string; timestamp: number; }
 type CustomMode = 'day' | 'month' | 'year';
@@ -26,13 +27,15 @@ const getWeekDays = (language: 'en' | 'am') => {
 };
 
 // ── Compute all metrics from a transaction list ───────────────────────────────
-const computeMetrics = (txs: Tx[], employees: { id: string; name: string; active: boolean }[]) => {
+const computeMetrics = (txs: Tx[], employees: { id: string; name: string; active: boolean }[], exps: Expense[]) => {
   let totalSales = 0, cashCollected = 0, onCredit = 0;
   txs.forEach(tx => {
     totalSales += tx.amount;
     if (tx.status === 'PAID') cashCollected += tx.amount;
     else                      onCredit      += tx.amount;
   });
+  const totalExpenses       = exps.reduce((sum, e) => sum + e.amount, 0);
+  const netProfit           = totalSales - totalExpenses;
   const ownerShare          = Math.floor(cashCollected / 2);
   const ownerShareIfAllPaid = Math.floor(totalSales / 2);
   const stylistStats = employees.map(emp => {
@@ -43,12 +46,12 @@ const computeMetrics = (txs: Tx[], employees: { id: string; name: string; active
     });
     return { ...emp, total, paid, credit };
   });
-  return { totalSales, cashCollected, onCredit, ownerShare, ownerShareIfAllPaid, stylistStats };
+  return { totalSales, cashCollected, onCredit, ownerShare, ownerShareIfAllPaid, stylistStats, totalExpenses, netProfit };
 };
 
 // ── Shared metrics display ────────────────────────────────────────────────────
 const DashboardMetrics: React.FC<{ metrics: ReturnType<typeof computeMetrics> }> = ({ metrics }) => {
-  const { totalSales, cashCollected, onCredit, ownerShare, ownerShareIfAllPaid, stylistStats } = metrics;
+  const { totalSales, cashCollected, onCredit, ownerShare, ownerShareIfAllPaid, stylistStats, totalExpenses, netProfit } = metrics;
   const { language } = useApp();
   const t = translations[language];
 
@@ -95,6 +98,22 @@ const DashboardMetrics: React.FC<{ metrics: ReturnType<typeof computeMetrics> }>
         <div className="metric-label">{t.totalSales}</div>
         <div className="metric-value">{formatBirr(totalSales)}</div>
         <div className="metric-subtext">{language === 'am' ? 'የጥሬ ገንዘብ እና ብድር ድምር' : 'Cash + Credit combined'}</div>
+      </div>
+
+      {/* Expenses + Net Profit */}
+      <div className="grid-2">
+        <div className="glass-panel metric-card" style={{ borderLeft: '3px solid hsl(var(--color-danger))' }}>
+          <div className="metric-label">{t.totalExpenses}</div>
+          <div className="metric-value" style={{ color: 'hsl(var(--color-danger))' }}>{formatBirr(totalExpenses)}</div>
+          <div className="metric-subtext">{t.expensesSubtext}</div>
+        </div>
+        <div className="glass-panel metric-card" style={{ borderLeft: `3px solid ${netProfit >= 0 ? 'hsl(var(--color-success))' : 'hsl(var(--color-danger))'}` }}>
+          <div className="metric-label">{t.netProfit}</div>
+          <div className="metric-value" style={{ color: netProfit >= 0 ? 'hsl(var(--color-success))' : 'hsl(var(--color-danger))' }}>
+            {netProfit < 0 ? '-' : ''}{formatBirr(Math.abs(netProfit))}
+          </div>
+          <div className="metric-subtext">{t.netProfitSubtext}</div>
+        </div>
       </div>
 
       {/* Stylist breakdown */}
@@ -148,7 +167,7 @@ const DashboardMetrics: React.FC<{ metrics: ReturnType<typeof computeMetrics> }>
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export const Dashboard: React.FC = () => {
-  const { transactions, employees, language } = useApp();
+  const { transactions, employees, expenses, language } = useApp();
   const t = translations[language];
   const [dateFilter, setDateFilter] = useState<DateFilterType>('today');
 
@@ -201,7 +220,34 @@ export const Dashboard: React.FC = () => {
     displayTxs = filterTransactionsByDate(transactions, dateFilter) as Tx[];
   }
 
-  const metrics = computeMetrics(displayTxs, employees);
+  // Filter expenses to the same time window
+  let displayExps: Expense[];
+  if (dateFilter === 'week') {
+    const dayObj = weekDays.find(d => d.label === selectedDay);
+    if (dayObj) {
+      const start = new Date(dayObj.date.getFullYear(), dayObj.date.getMonth(), dayObj.date.getDate()).getTime();
+      displayExps = expenses.filter(e => e.timestamp >= start && e.timestamp < start + 86400000);
+    } else displayExps = [];
+  } else if (dateFilter === 'custom') {
+    if (customMode === 'day') {
+      const [y, m, d] = customDay.split('-').map(Number);
+      const start = new Date(y, m - 1, d).getTime();
+      displayExps = expenses.filter(e => e.timestamp >= start && e.timestamp < start + 86400000);
+    } else if (customMode === 'month') {
+      const [y, m] = customMonth.split('-').map(Number);
+      const start = new Date(y, m - 1, 1).getTime();
+      const end   = new Date(y, m, 1).getTime();
+      displayExps = expenses.filter(e => e.timestamp >= start && e.timestamp < end);
+    } else {
+      const start = new Date(customYear, 0, 1).getTime();
+      const end   = new Date(customYear + 1, 0, 1).getTime();
+      displayExps = expenses.filter(e => e.timestamp >= start && e.timestamp < end);
+    }
+  } else {
+    displayExps = filterTransactionsByDate(expenses, dateFilter) as unknown as Expense[];
+  }
+
+  const metrics = computeMetrics(displayTxs, employees, displayExps);
 
   // Year range for dropdown (2020 → current+1)
   const yearOptions: number[] = [];
