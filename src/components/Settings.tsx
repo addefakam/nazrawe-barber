@@ -9,8 +9,8 @@ interface SettingsProps {
 
 export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
   const { 
-    employees, transactions, theme, addEmployee, toggleEmployeeActive, toggleTheme, 
-    resetAllData, exportData, importData, language,
+    employees, transactions, expenses, theme, addEmployee, toggleEmployeeActive, toggleTheme, 
+    resetAllData, importData, language,
     quickAdds, customServices, addQuickAdd, deleteQuickAdd, addCustomService, deleteCustomService
   } = useApp();
   const t = translations[language];
@@ -82,16 +82,6 @@ export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
     setNewServiceStr('');
   };
 
-  const handleExport = () => {
-    const data = exportData();
-    const uri  = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
-    const link = document.createElement('a');
-    link.setAttribute('href', uri);
-    link.setAttribute('download', `nazrawe_backup_${new Date().toISOString().slice(0, 10)}.json`);
-    link.click();
-    onSuccess(language === 'am' ? 'የመረጃ ፋይል ወርዷል።' : 'Backup file downloaded.');
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -100,7 +90,7 @@ export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
       const result = ev.target?.result;
       if (typeof result === 'string') {
         const ok = importData(result);
-        onSuccess(ok 
+        onSuccess(ok
           ? (language === 'am' ? '✅ መረጃው በተሳካ ሁኔታ ተመልሷል!' : '✅ Backup restored successfully!')
           : (language === 'am' ? '❌ ስህተት፡ የማይሰራ የመረጃ ፋይል ነው' : '❌ Error: Invalid backup file.')
         );
@@ -111,11 +101,13 @@ export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
   };
 
   const handleExportPDF = () => {
-    // 1. Gather stats
-    const totalSalesCents = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    // 1. Gather income stats
+    const totalSalesCents    = transactions.reduce((sum, tx) => sum + tx.amount, 0);
     const cashCollectedCents = transactions.reduce((sum, tx) => sum + (tx.status === 'PAID' ? tx.amount : 0), 0);
-    const creditSalesCents = transactions.reduce((sum, tx) => sum + (tx.status === 'CREDIT' ? tx.amount : 0), 0);
-    const ownerShareCents = Math.round(cashCollectedCents * 0.50);
+    const creditSalesCents   = transactions.reduce((sum, tx) => sum + (tx.status === 'CREDIT' ? tx.amount : 0), 0);
+    const ownerShareCents    = Math.round(cashCollectedCents * 0.50);
+    const totalExpensesCents = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const netProfitCents     = totalSalesCents - totalExpensesCents;
 
     // 2. Stylist stats
     const stylistStats = employees.map(emp => {
@@ -152,6 +144,20 @@ export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
       `;
     }).join('');
 
+    // 3. Expense rows
+    const expenseRows = expenses.map(exp => {
+      const dateStr = `${formatDate(exp.timestamp)} ${formatTime(exp.timestamp)}`;
+      return `
+        <tr>
+          <td>${dateStr}</td>
+          <td><strong>${exp.category}</strong></td>
+          <td class="note-text">${exp.notes || '-'}</td>
+          <td class="amount-cell" style="color:#dc2626">${formatBirr(exp.amount)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // 4. Stylist rows
     const stylistRows = stylistStats.map(s => {
       return `
         <tr>
@@ -394,6 +400,14 @@ export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
             <div class="kpi-label">${t.yourShare}</div>
             <div class="kpi-value">${formatBirr(ownerShareCents)}</div>
           </div>
+          <div class="kpi-card" style="border-left:3px solid #dc2626">
+            <div class="kpi-label" style="color:#dc2626">${t.totalExpenses}</div>
+            <div class="kpi-value" style="color:#dc2626">${formatBirr(totalExpensesCents)}</div>
+          </div>
+          <div class="kpi-card" style="border-left:3px solid ${netProfitCents >= 0 ? '#15803d' : '#dc2626'}">
+            <div class="kpi-label" style="color:${netProfitCents >= 0 ? '#15803d' : '#dc2626'}">${t.netProfit}</div>
+            <div class="kpi-value" style="color:${netProfitCents >= 0 ? '#15803d' : '#dc2626'}">${netProfitCents < 0 ? '-' : ''}${formatBirr(Math.abs(netProfitCents))}</div>
+          </div>
         </div>
 
         <h3>${t.pdfStylistPerformance}</h3>
@@ -409,6 +423,21 @@ export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
           </thead>
           <tbody>
             ${stylistRows || `<tr><td colspan="5" style="text-align: center; color: #64748b;">${t.noStylists}</td></tr>`}
+          </tbody>
+        </table>
+
+        <h3>${language === 'am' ? 'የወጪ ዝርዝር' : 'Expenses List'}</h3>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:140px">${t.pdfColDate}</th>
+              <th>${language === 'am' ? 'ምድብ' : 'Category'}</th>
+              <th>${language === 'am' ? 'ማስታወሻ' : 'Notes'}</th>
+              <th class="amount-header" style="width:100px">${t.pdfColAmount}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${expenseRows || `<tr><td colspan="4" style="text-align:center;color:#64748b">${language === 'am' ? 'ምንም ወጪ አልተመዘገበም' : 'No expenses recorded.'}</td></tr>`}
           </tbody>
         </table>
 
@@ -676,27 +705,22 @@ export const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
           {t.backupDesc}
         </p>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="button" className="btn btn-secondary" style={{ flex: 1, padding: '10px', fontSize: '13px', borderRadius: '12px' }} onClick={handleExport}>
-            {t.exportBtn}
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{
+              flex: 1, padding: '12px', fontSize: '13px', borderRadius: '12px',
+              background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #d97706 100%)',
+              color: '#000', fontWeight: 'bold'
+            }}
+            onClick={handleExportPDF}
+          >
+            {t.exportPdfBtn}
           </button>
           <button type="button" className="btn btn-secondary" style={{ flex: 1, padding: '10px', fontSize: '13px', borderRadius: '12px' }} onClick={() => fileInputRef.current?.click()}>
             {t.importBtn}
           </button>
           <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={handleFileChange} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-          <button 
-            type="button" 
-            className="btn btn-primary" 
-            style={{ 
-              padding: '12px', fontSize: '13px', borderRadius: '12px',
-              background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #d97706 100%)',
-              color: '#000', fontWeight: 'bold'
-            }} 
-            onClick={handleExportPDF}
-          >
-            {t.exportPdfBtn}
-          </button>
         </div>
       </div>
 
